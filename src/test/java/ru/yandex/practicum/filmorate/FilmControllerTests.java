@@ -15,7 +15,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.model.Film;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,7 +45,7 @@ public class FilmControllerTests {
         film.setName("Test Film");
         film.setDescription("Test Description");
         film.setReleaseDate(LocalDate.of(2000, 1, 1));
-        film.setDuration(Duration.ofMinutes(120));
+        film.setDuration(120);
 
         when(filmController.create(any(Film.class))).thenAnswer(invocation -> {
             Film createdFilm = invocation.getArgument(0);
@@ -71,7 +70,7 @@ public class FilmControllerTests {
         film.setName("Test Film");
         film.setDescription("Test Description");
         film.setReleaseDate(LocalDate.of(2000, 1, 1));
-        film.setDuration(Duration.ofMinutes(120));
+        film.setDuration(120);
 
         films.put(film.getId(), film);
 
@@ -80,7 +79,7 @@ public class FilmControllerTests {
         updatedFilm.setName("Updated Film");
         updatedFilm.setDescription("Updated Description");
         updatedFilm.setReleaseDate(LocalDate.of(2000, 1, 1));
-        updatedFilm.setDuration(Duration.ofMinutes(130));
+        updatedFilm.setDuration(130);
 
         when(filmController.update(any(Film.class))).thenAnswer(invocation -> {
             Film newFilm = invocation.getArgument(0);
@@ -106,13 +105,13 @@ public class FilmControllerTests {
         film1.setName("Film 1");
         film1.setDescription("Description 1");
         film1.setReleaseDate(LocalDate.of(2000, 1, 1));
-        film1.setDuration(Duration.ofMinutes(100));
+        film1.setDuration(100);
 
         Film film2 = new Film();
         film2.setName("Film 2");
         film2.setDescription("Description 2");
         film2.setReleaseDate(LocalDate.of(2001, 1, 1));
-        film2.setDuration(Duration.ofMinutes(110));
+        film2.setDuration(110);
 
         films.put(1L, film1);
         films.put(2L, film2);
