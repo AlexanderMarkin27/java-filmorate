@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.model;
 
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import java.time.Duration;
@@ -15,5 +16,5 @@ public class Film {
     String name;
     String description;
     LocalDate releaseDate;
-    Duration duration;
+    int duration;
 }

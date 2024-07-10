@@ -1,12 +1,14 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import ch.qos.logback.classic.Logger;
+import jakarta.validation.constraints.NotNull;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashMap;
@@ -19,7 +21,7 @@ public class FilmController {
     private final Map<Long, Film> films = new HashMap<>();
 
     @PostMapping
-    public Film create(@RequestBody Film film) {
+    public Film create(@RequestBody @NotNull Film film) {
         log.info("Реквест на создание фильма: {}", film);
         validateFilmData(film);
         film.setId(getNextId());
@@ -74,7 +76,7 @@ public class FilmController {
             log.error("Ошибка валидации: Дата релиза не может быть раньше 28 декабря 1895 года");
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
-        if (film.getDuration().getSeconds() <= 0) {
+        if (film.getDuration() <= 0) {
             log.error("Ошибка валидации: Продолжительность фильма должна быть положительным числом");
             throw new ValidationException("Продолжительность фильма должна быть положительным числом");
         }

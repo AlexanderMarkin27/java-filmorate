@@ -1,5 +1,7 @@
 package ru.yandex.practicum.filmorate.model;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -9,6 +11,7 @@ import java.time.LocalDate;
 @EqualsAndHashCode(of = {"email"})
 public class User {
     Long id;
+    @Email
     String email;
     String login;
     String name;
