@@ -1,27 +1,27 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import ch.qos.logback.classic.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.interfaces.AdvanceInfo;
+import ru.yandex.practicum.filmorate.interfaces.BasicInfo;
 import ru.yandex.practicum.filmorate.model.User;
 
-import java.time.LocalDate;
 import java.util.*;
 
 
 @RestController
 @RequestMapping("/users")
+@Slf4j
 public class UserController {
-    private static final Logger log = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(UserController.class);
     private final Map<Long, User> users = new HashMap<>();
+    private long currentMaxId = 0;
 
     @PostMapping
-    public User create(@RequestBody User user) {
+    public User create(@RequestBody @Validated(BasicInfo.class) User user) {
         log.info("Реквест на создание юзера: {}", user);
-        validateUserData(user);
         user.setId(getNextId());
         if (user.getName() == null || user.getName().isBlank()) {
             user.setName(user.getLogin());
@@ -32,28 +32,24 @@ public class UserController {
     }
 
     @PutMapping
-    public User update(@RequestBody User newUser) {
+    public User update(@RequestBody @Validated(AdvanceInfo.class) User newUser) {
         log.info("Реквест на обновление юзера: {}", newUser);
-        if (newUser == null || newUser.getId() == null) {
-            log.error("Ошибка валидации: Id должен быть указан");
-            throw new ValidationException("Id должен быть указан");
-        }
-        User existingUser = users.get(newUser.getId());
-        if (existingUser == null) {
-            log.error("Юзер с ID {} не найден", newUser.getId());
-            throw new NotFoundException("Юзер с id = " + newUser.getId() + " не найден");
+        long userId = newUser.getId();
+        if (!users.containsKey(userId)) {
+            log.error("Юзер с ID {} не найден",userId);
+            throw new NotFoundException("Юзер с id = " + userId + " не найден");
         }
         Optional<User> userWithDuplicatedEmail = users.values().stream()
-                .filter(user -> !user.getId().equals(existingUser.getId()) && user.getEmail().equals(newUser.getEmail()))
+                .filter(user -> !user.getId().equals(userId) && user.getEmail().equals(newUser.getEmail()))
                 .findAny();
         if (userWithDuplicatedEmail.isPresent()) {
             log.error("Имейл уже используется: {}", newUser.getEmail());
             throw new DuplicatedDataException("Этот имейл уже используется");
         }
-        validateUserData(newUser);
-        updateUserData(existingUser, newUser);
-        log.info("Юзер с ID ID {} обновлен", newUser.getId());
-        return existingUser;
+
+        users.replace(userId, newUser);
+        log.info("Юзер с ID ID {} обновлен", userId);
+        return newUser;
     }
 
     @GetMapping
@@ -63,44 +59,7 @@ public class UserController {
     }
 
     private long getNextId() {
-        long currentMaxId = users.keySet()
-                .stream()
-                .mapToLong(id -> id)
-                .max()
-                .orElse(0);
         return ++currentMaxId;
     }
 
-    private void validateUserData(User user) {
-        log.info("Валидация данных юзера: {}", user);
-        if (user.getEmail() == null || user.getEmail().isBlank()) {
-            log.error("Ошибка валидации: Электронная почта не может быть пустой");
-            throw new ValidationException("Электронная почта не может быть пустой");
-        }
-        if (!user.getEmail().contains("@")) {
-            log.error("Ошибка валидации: Электронная почта должна содержать символ @");
-            throw new ValidationException("Электронная почта должна содержать символ @");
-        }
-        if (user.getLogin() == null || user.getLogin().isBlank()) {
-            log.error("Ошибка валидации: Логин не может быть пустым");
-            throw new ValidationException("Логин не может быть пустым");
-        }
-        if (user.getLogin().contains(" ")) {
-            log.error("Ошибка валидации: Логин не может содержать пробелы");
-            throw new ValidationException("Логин не может содержать пробелы");
-        }
-        if (user.getBirthday().isAfter(LocalDate.now())) {
-            log.error("Ошибка валидации: Дата рождения не может быть в будущем");
-            throw new ValidationException("Дата рождения не может быть в будущем");
-        }
-
-    }
-
-    private void updateUserData(User existingUser, User newUser) {
-        log.info("Обновление данных юзера с ID: {}", existingUser.getId());
-        existingUser.setEmail(newUser.getEmail());
-        existingUser.setName(newUser.getName());
-        existingUser.setBirthday(newUser.getBirthday());
-        existingUser.setLogin(newUser.getLogin());
-    }
 }
