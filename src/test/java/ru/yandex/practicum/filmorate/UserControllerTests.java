@@ -1,26 +1,28 @@
 package ru.yandex.practicum.filmorate;
 
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import ru.yandex.practicum.filmorate.controller.UserController;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.Map;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(UserController.class)
-public class UserControllerTests {
+public class UserControllerTests{
 
     @Autowired
     private MockMvc mockMvc;
@@ -28,96 +30,129 @@ public class UserControllerTests {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
-    private UserController userController;
-
-    private Map<Long, User> users;
+    private User testUser;
+    private User validUserForUpdate;
 
     @BeforeEach
-    public void setup() {
-        users = new HashMap<>();
-        when(userController.getAll()).thenReturn(users.values());
+    public void setUp() {
+        testUser = new User();
+        testUser.setEmail("testUser.email@example.com");
+        testUser.setLogin("testUser");
+        testUser.setName("test user Name");
+        testUser.setBirthday(LocalDate.of(1990, 1, 1));
     }
 
     @Test
-    public void testCreateUser() throws Exception {
-        User user = new User();
-        user.setLogin("testLogin");
-        user.setEmail("test@example.com");
-        user.setBirthday(LocalDate.of(2000, 1, 1));
+    public void createUser_validData_userCreated() throws Exception {
 
-        when(userController.create(any(User.class))).thenAnswer(invocation -> {
-            User createdUser = invocation.getArgument(0);
-            createdUser.setId(1L);
-            users.put(createdUser.getId(), createdUser);
-            return createdUser;
-        });
+        ResultActions resultActions = mockMvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(testUser)));
+
+        resultActions.andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.email").value(testUser.getEmail()))
+                .andExpect(jsonPath("$.login").value(testUser.getLogin()))
+                .andExpect(jsonPath("$.name").value(testUser.getName()))
+                .andExpect(jsonPath("$.birthday").value(testUser.getBirthday().toString()));
+    }
+
+    @Test
+    public void updateUser_validData_userUpdated() throws Exception {
+        testUser.setEmail("testUserForUpdate.email@example.com");
+
+        ResultActions resultActions = mockMvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(testUser)));
+
+        MvcResult result = resultActions.andReturn();
+        String responseBody = result.getResponse().getContentAsString();
+
+        Long userId = JsonPath.parse(responseBody).read("$.id", Long.class);
+
+        User updatedUser = new User();
+        updatedUser.setId(userId);
+        updatedUser.setEmail("updated.email@example.com");
+        updatedUser.setLogin("Updatedlogin");
+        updatedUser.setName("Updated Name");
+        updatedUser.setBirthday(LocalDate.of(1988, 10, 1));
+
+        resultActions = mockMvc.perform(put("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updatedUser)));
+
+        resultActions.andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.email").value(updatedUser.getEmail()))
+                .andExpect(jsonPath("$.login").value(updatedUser.getLogin()))
+                .andExpect(jsonPath("$.name").value(updatedUser.getName()))
+                .andExpect(jsonPath("$.birthday").value(updatedUser.getBirthday().toString()));
+    }
+
+    @Test
+    public void getAllUsers_responseStatusOK() throws Exception {
+        mockMvc.perform(get("/users")
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
+    }
+
+    @Test
+    public void createUser_invalidEmail_validationFails() throws Exception {
+        testUser.setEmail("invalid-email");
 
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.login").value("testLogin"))
-                .andExpect(jsonPath("$.email").value("test@example.com"));
+                        .content(objectMapper.writeValueAsString(testUser)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
-    public void testUpdateUser() throws Exception {
-        User user = new User();
-        user.setId(1L);
-        user.setLogin("testLogin");
-        user.setEmail("test@example.com");
-        user.setBirthday(LocalDate.of(2000, 1, 1));
+    public void createUser_emptyEmail_validationFails() throws Exception {
+        testUser.setEmail(null);
 
-        users.put(user.getId(), user);
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(testUser)))
+                .andExpect(status().isBadRequest());
+    }
 
-        User updatedUser = new User();
-        updatedUser.setId(1L);
-        updatedUser.setLogin("updatedLogin");
-        updatedUser.setEmail("updated@example.com");
-        updatedUser.setBirthday(LocalDate.of(2000, 1, 1));
+    @Test
+    public void createUser_emptyLogin_validationFails() throws Exception {
+        testUser.setLogin(null);
 
-        when(userController.update(any(User.class))).thenAnswer(invocation -> {
-            User newUser = invocation.getArgument(0);
-            User existingUser = users.get(newUser.getId());
-            existingUser.setEmail(newUser.getEmail());
-            existingUser.setLogin(newUser.getLogin());
-            existingUser.setName(newUser.getName());
-            existingUser.setBirthday(newUser.getBirthday());
-            return existingUser;
-        });
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(testUser)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void createUser_blankLogin_validationFails() throws Exception {
+        testUser.setLogin("   ");
+
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(testUser)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void createUser_futureBirthday_validationFails() throws Exception {
+        testUser.setBirthday(LocalDate.now().plusDays(1));
+
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(testUser)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void updateUser_userIdIsNull_validationFails() throws Exception {
+        testUser.setId(null);
 
         mockMvc.perform(put("/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updatedUser)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.login").value("updatedLogin"))
-                .andExpect(jsonPath("$.email").value("updated@example.com"));
+                        .content(objectMapper.writeValueAsString(testUser)))
+                .andExpect(status().isBadRequest());
     }
 
-    @Test
-    public void testGetAllUsers() throws Exception {
-        User user1 = new User();
-        user1.setLogin("testLogin1");
-        user1.setEmail("test1@example.com");
-        user1.setBirthday(LocalDate.of(2000, 1, 1));
-
-        User user2 = new User();
-        user2.setLogin("testLogin2");
-        user2.setEmail("test2@example.com");
-        user2.setBirthday(LocalDate.of(2000, 1, 1));
-
-        users.put(1L, user1);
-        users.put(2L, user2);
-
-        when(userController.getAll()).thenReturn(users.values());
-
-        mockMvc.perform(get("/users")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].login").value("testLogin1"))
-                .andExpect(jsonPath("$[1].login").value("testLogin2"));
-    }
 }
-

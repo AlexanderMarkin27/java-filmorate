@@ -11,7 +11,6 @@ import ru.yandex.practicum.filmorate.model.User;
 
 import java.util.*;
 
-
 @RestController
 @RequestMapping("/users")
 @Slf4j
@@ -26,6 +25,13 @@ public class UserController {
         if (user.getName() == null || user.getName().isBlank()) {
             user.setName(user.getLogin());
         }
+        boolean userWithDuplicatedEmail = users.values().stream()
+                .anyMatch(item -> item.getEmail().equals(user.getEmail()));
+
+        if (userWithDuplicatedEmail) {
+            log.error("Имейл уже используется: {}", user.getEmail());
+            throw new DuplicatedDataException("Этот имейл уже используется");
+        }
         users.put(user.getId(), user);
         log.info("Создан юзер с ID: {}", user.getId());
         return user;
@@ -39,10 +45,11 @@ public class UserController {
             log.error("Юзер с ID {} не найден",userId);
             throw new NotFoundException("Юзер с id = " + userId + " не найден");
         }
-        Optional<User> userWithDuplicatedEmail = users.values().stream()
-                .filter(user -> !user.getId().equals(userId) && user.getEmail().equals(newUser.getEmail()))
-                .findAny();
-        if (userWithDuplicatedEmail.isPresent()) {
+
+        boolean userWithDuplicatedEmail = users.values().stream()
+                .anyMatch(user -> !user.getId().equals(userId) && user.getEmail().equals(newUser.getEmail()));
+
+        if (userWithDuplicatedEmail) {
             log.error("Имейл уже используется: {}", newUser.getEmail());
             throw new DuplicatedDataException("Этот имейл уже используется");
         }
