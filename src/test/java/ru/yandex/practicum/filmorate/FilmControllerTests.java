@@ -1,23 +1,22 @@
 package ru.yandex.practicum.filmorate;
 
-import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.model.Film;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.Map;
 
 @WebMvcTest(FilmController.class)
 public class FilmControllerTests {
@@ -28,101 +27,121 @@ public class FilmControllerTests {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
-    private FilmController filmController;
+    private Film testFilm;
 
-    private Map<Long, Film> films;
 
     @BeforeEach
-    public void setup() {
-        films = new HashMap<>();
-        when(filmController.getAll()).thenReturn(films.values());
+    public void setUp() {
+        testFilm = new Film();
+        testFilm.setName("test film");
+        testFilm.setDescription("this is description test film");
+        testFilm.setDuration(60);
+        testFilm.setReleaseDate(LocalDate.of(1990, 1, 1));
     }
 
     @Test
-    public void testCreateFilm() throws Exception {
-        Film film = new Film();
-        film.setName("Test Film");
-        film.setDescription("Test Description");
-        film.setReleaseDate(LocalDate.of(2000, 1, 1));
-        film.setDuration(120);
+    public void createFilm_validData_filmCreated() throws Exception {
 
-        when(filmController.create(any(Film.class))).thenAnswer(invocation -> {
-            Film createdFilm = invocation.getArgument(0);
-            createdFilm.setId(1L);
-            films.put(createdFilm.getId(), createdFilm);
-            return createdFilm;
-        });
+        ResultActions resultActions = mockMvc.perform(post("/films")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(testFilm)));
+
+        resultActions.andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.name").value(testFilm.getName()))
+                .andExpect(jsonPath("$.description").value(testFilm.getDescription()))
+                .andExpect(jsonPath("$.duration").value(testFilm.getDuration()))
+                .andExpect(jsonPath("$.releaseDate").value(testFilm.getReleaseDate().toString()));
+    }
+
+    @Test
+    public void createFilm_durationIs1_filmCreated() throws Exception {
+        testFilm.setDuration(1);;
 
         mockMvc.perform(post("/films")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.name").value("Test Film"))
-                .andExpect(jsonPath("$.description").value("Test Description"));
+                        .content(objectMapper.writeValueAsString(testFilm)))
+                .andExpect(status().isOk());
     }
 
     @Test
-    public void testUpdateFilm() throws Exception {
-        Film film = new Film();
-        film.setId(1L);
-        film.setName("Test Film");
-        film.setDescription("Test Description");
-        film.setReleaseDate(LocalDate.of(2000, 1, 1));
-        film.setDuration(120);
+    public void createFilm_durationIsLessThan1_filmCreated() throws Exception {
+        testFilm.setDuration(0);;
 
-        films.put(film.getId(), film);
+        mockMvc.perform(post("/films")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(testFilm)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void updateFilm_validData_filmUpdated() throws Exception {
+
+        ResultActions resultActions = mockMvc.perform(post("/films")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(testFilm)));
+
+        MvcResult result = resultActions.andReturn();
+        String responseBody = result.getResponse().getContentAsString();
+
+        Long filmId = JsonPath.parse(responseBody).read("$.id", Long.class);
 
         Film updatedFilm = new Film();
-        updatedFilm.setId(1L);
-        updatedFilm.setName("Updated Film");
-        updatedFilm.setDescription("Updated Description");
-        updatedFilm.setReleaseDate(LocalDate.of(2000, 1, 1));
-        updatedFilm.setDuration(130);
+        updatedFilm.setId(filmId);
+        updatedFilm.setName("updated film");
+        updatedFilm.setDescription("updated description");
+        updatedFilm.setReleaseDate(LocalDate.of(2022, 1, 1));
+        updatedFilm.setDuration(34);
 
-        when(filmController.update(any(Film.class))).thenAnswer(invocation -> {
-            Film newFilm = invocation.getArgument(0);
-            Film existingFilm = films.get(newFilm.getId());
-            existingFilm.setName(newFilm.getName());
-            existingFilm.setDescription(newFilm.getDescription());
-            existingFilm.setReleaseDate(newFilm.getReleaseDate());
-            existingFilm.setDuration(newFilm.getDuration());
-            return existingFilm;
-        });
+        resultActions = mockMvc.perform(put("/films")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updatedFilm)));
 
-        mockMvc.perform(put("/films")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updatedFilm)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Updated Film"))
-                .andExpect(jsonPath("$.description").value("Updated Description"));
+        resultActions.andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.name").value(updatedFilm.getName()))
+                .andExpect(jsonPath("$.description").value(updatedFilm.getDescription()))
+                .andExpect(jsonPath("$.releaseDate").value(updatedFilm.getReleaseDate().toString()))
+                .andExpect(jsonPath("$.description").value(updatedFilm.getDescription()));
     }
 
     @Test
-    public void testGetAllFilms() throws Exception {
-        Film film1 = new Film();
-        film1.setName("Film 1");
-        film1.setDescription("Description 1");
-        film1.setReleaseDate(LocalDate.of(2000, 1, 1));
-        film1.setDuration(100);
-
-        Film film2 = new Film();
-        film2.setName("Film 2");
-        film2.setDescription("Description 2");
-        film2.setReleaseDate(LocalDate.of(2001, 1, 1));
-        film2.setDuration(110);
-
-        films.put(1L, film1);
-        films.put(2L, film2);
-
-        when(filmController.getAll()).thenReturn(films.values());
-
+    public void getAllFilms_responseStatusOK() throws Exception {
         mockMvc.perform(get("/films")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Film 1"))
-                .andExpect(jsonPath("$[1].name").value("Film 2"));
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
     }
+
+    @Test
+    public void createFilm_emptyName_validationFails() throws Exception {
+        testFilm.setName(null);
+
+        mockMvc.perform(post("/films")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(testFilm)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void createFilm_blankName_validationFails() throws Exception {
+        testFilm.setName("  ");
+
+        mockMvc.perform(post("/films")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(testFilm)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void createFilm_descriptionHasMoreThan200Chars_validationFails() throws Exception {
+        testFilm.setDescription("Lorem ipsum dolor sit amet, consetetur sadipscing elitr, "
+                + "sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, "
+                + "sed diam voluptua. At vero eos et accusam et justo duo dolores e");
+
+        mockMvc.perform(post("/films")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(testFilm)))
+                .andExpect(status().isBadRequest());
+    }
+
 }
 

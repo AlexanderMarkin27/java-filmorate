@@ -31,7 +31,6 @@ public class UserControllerTests{
     private ObjectMapper objectMapper;
 
     private User testUser;
-    private User validUserForUpdate;
 
     @BeforeEach
     public void setUp() {
