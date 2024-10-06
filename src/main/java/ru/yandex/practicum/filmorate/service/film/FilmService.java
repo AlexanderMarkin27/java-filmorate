@@ -52,6 +52,7 @@ public class FilmService {
                 .map(entry -> getFilmById(entry.getKey()))
                 .collect(Collectors.toList());
     }
+
     private Film getFilmById(long filmId) {
         if (!filmStorage.containsFilm(filmId)) {
             log.error("Фильм с ID {} не найден", filmId);
