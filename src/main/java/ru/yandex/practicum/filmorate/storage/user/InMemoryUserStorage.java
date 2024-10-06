@@ -64,6 +64,15 @@ public class InMemoryUserStorage implements UserStorage {
                 .anyMatch(user -> !user.getId().equals(userId) && user.getEmail().equals(email));
     }
 
+    @Override
+    public User getUserById(long userId) {
+        if (!containsUser(userId)) {
+            log.error("Юзер с ID {} не найден", userId);
+            throw new NotFoundException("Юзер с id = " + userId + " не найден");
+        }
+        return users.get(userId);
+    }
+
     private long getNextId() {
         return ++currentMaxId;
     }

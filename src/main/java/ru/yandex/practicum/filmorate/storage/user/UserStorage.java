@@ -10,4 +10,6 @@ public interface UserStorage {
     Collection<User> getAllUsers();
     boolean containsUser(long id);
     boolean isEmailDuplicated(String email, Long userId);
+
+    User getUserById(long userId);
 }
