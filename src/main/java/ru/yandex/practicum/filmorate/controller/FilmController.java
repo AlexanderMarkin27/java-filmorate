@@ -8,11 +8,13 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.interfaces.AdvanceInfo;
 import ru.yandex.practicum.filmorate.interfaces.BasicInfo;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.service.film.FilmService;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -21,9 +23,11 @@ import java.util.Map;
 public class FilmController {
 
     private final FilmStorage filmStorage;
+    private final FilmService filmService;
 
-    public FilmController(FilmStorage filmStorage) {
+    public FilmController(FilmStorage filmStorage, FilmService filmService) {
         this.filmStorage = filmStorage;
+        this.filmService = filmService;
     }
 
     @PostMapping
@@ -48,6 +52,24 @@ public class FilmController {
     public Collection<Film> getAll() {
         log.info("Реквест на получение всех фильмов");
         return filmStorage.getAllFilms();
+    }
+
+    @PutMapping("/{id}/like/{userId}")
+    public void addLike(@PathVariable long id, @PathVariable long userId) {
+        log.info("Добавление лайка от пользователя с ID {} фильму с ID {}", userId, id);
+        filmService.addLike(id, userId);
+    }
+
+    @DeleteMapping("/{id}/like/{userId}")
+    public void removeLike(@PathVariable long id, @PathVariable long userId) {
+        log.info("Удаление лайка от пользователя с ID {} у фильма с ID {}", userId, id);
+        filmService.removeLike(id, userId);
+    }
+
+    @GetMapping("/popular")
+    public List<Film> getMostPopularFilms(@RequestParam(defaultValue = "10") int count) {
+        log.info("Запрос на получение {} популярных фильмов", count);
+        return filmService.getMostPopularFilms(count);
     }
 
     private void validateFilmProductionData(Film film) {
