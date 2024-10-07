@@ -7,6 +7,8 @@ import ru.yandex.practicum.filmorate.interfaces.AdvanceInfo;
 import ru.yandex.practicum.filmorate.interfaces.BasicInfo;
 
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @EqualsAndHashCode(of = {"email"})
@@ -22,4 +24,5 @@ public class User {
     private String name;
     @Past(message = "Дата рождения не может быть в будущем", groups = {BasicInfo.class, AdvanceInfo.class})
     private LocalDate birthday;
+    private Set<Long> friends = new HashSet<>();
 }

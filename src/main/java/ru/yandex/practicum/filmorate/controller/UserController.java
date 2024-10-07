@@ -1,13 +1,14 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.interfaces.AdvanceInfo;
 import ru.yandex.practicum.filmorate.interfaces.BasicInfo;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.user.UserService;
+import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.*;
 
@@ -15,58 +16,49 @@ import java.util.*;
 @RequestMapping("/users")
 @Slf4j
 public class UserController {
-    private final Map<Long, User> users = new HashMap<>();
-    private long currentMaxId = 0;
+
+    @Autowired
+    private final UserStorage userStorage;
+    private final UserService userService;
+
+    public UserController(UserStorage userStorage, UserService userService) {
+        this.userStorage = userStorage;
+        this.userService = userService;
+    }
 
     @PostMapping
     public User create(@RequestBody @Validated(BasicInfo.class) User user) {
         log.info("Реквест на создание юзера: {}", user);
-        user.setId(getNextId());
-        if (user.getName() == null || user.getName().isBlank()) {
-            user.setName(user.getLogin());
-        }
-        boolean userWithDuplicatedEmail = users.values().stream()
-                .anyMatch(item -> item.getEmail().equals(user.getEmail()));
-
-        if (userWithDuplicatedEmail) {
-            log.error("Имейл уже используется: {}", user.getEmail());
-            throw new DuplicatedDataException("Этот имейл уже используется");
-        }
-        users.put(user.getId(), user);
-        log.info("Создан юзер с ID: {}", user.getId());
-        return user;
+        return userStorage.addUser(user);
     }
 
     @PutMapping
     public User update(@RequestBody @Validated(AdvanceInfo.class) User newUser) {
         log.info("Реквест на обновление юзера: {}", newUser);
-        long userId = newUser.getId();
-        if (!users.containsKey(userId)) {
-            log.error("Юзер с ID {} не найден",userId);
-            throw new NotFoundException("Юзер с id = " + userId + " не найден");
-        }
-
-        boolean userWithDuplicatedEmail = users.values().stream()
-                .anyMatch(user -> !user.getId().equals(userId) && user.getEmail().equals(newUser.getEmail()));
-
-        if (userWithDuplicatedEmail) {
-            log.error("Имейл уже используется: {}", newUser.getEmail());
-            throw new DuplicatedDataException("Этот имейл уже используется");
-        }
-
-        users.replace(userId, newUser);
-        log.info("Юзер с ID ID {} обновлен", userId);
-        return newUser;
+        return userStorage.updateUser(newUser);
     }
 
     @GetMapping
     public Collection<User> getAll() {
         log.info("Реквест на получение всех юзеров");
-        return users.values();
+        return userStorage.getAllUsers();
     }
 
-    private long getNextId() {
-        return ++currentMaxId;
+    @PutMapping("/{id}/friends/{friendId}")
+    public void addFriend(@PathVariable long id, @PathVariable long friendId) {
+        log.info("Добавление друга с ID {} для пользователя с ID {}", friendId, id);
+        userService.addFriend(id, friendId);
     }
 
+    @DeleteMapping("/{id}/friends/{friendId}")
+    public void removeFriend(@PathVariable long id, @PathVariable long friendId) {
+        log.info("Удаление друга с ID {} у пользователя с ID {}", friendId, id);
+        userService.removeFriend(id, friendId);
+    }
+
+    @GetMapping("/{id}/friends/common/{otherId}")
+    public Collection<User> getCommonFriends(@PathVariable long id, @PathVariable long otherId) {
+        log.info("Запрос общих друзей между пользователем {} и {}", id, otherId);
+        return userService.getCommonFriends(id, otherId);
+    }
 }
