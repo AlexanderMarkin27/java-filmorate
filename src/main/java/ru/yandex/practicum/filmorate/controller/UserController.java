@@ -17,10 +17,10 @@ import java.util.*;
 @Slf4j
 public class UserController {
 
+    @Autowired
     private final UserStorage userStorage;
     private final UserService userService;
 
-    @Autowired
     public UserController(UserStorage userStorage, UserService userService) {
         this.userStorage = userStorage;
         this.userService = userService;
